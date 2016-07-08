@@ -1,0 +1,35 @@
+#!/bin/bash
+
+ACTION="$1"
+TARGETS="${@:2}"
+
+function get_unit_file(){
+    
+     PATHS=(
+         /etc/systemd/system/$1
+         /usr/lib/systemd/system/$1
+     )
+
+     for i in ${PATHS[@]} ; do
+         if [ -f "$i" ] ; then
+             echo "$i"
+             break
+         fi
+     done
+
+}
+
+function action_start(){
+
+    UNIT_FILE=`get_unit_file $1`
+
+    echo $UNIT_FILE
+}
+    
+
+for TARGET in ${TARGETS[@]}; do
+    case "$ACTION" in
+        start )     action_start $TARGET ;;
+        * ) >&2 echo "Unknown operation $ACTION." ;;
+    esac
+done
