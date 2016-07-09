@@ -8,6 +8,8 @@ function get_unit_file(){
      PATHS=(
          /etc/systemd/system/$1
          /usr/lib/systemd/system/$1
+         /etc/systemd/system/$1.*
+         /usr/lib/systemd/system/$1.*
      )
 
      for i in ${PATHS[@]} ; do
