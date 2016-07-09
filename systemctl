@@ -1,20 +1,18 @@
 #!/bin/bash
 
 ACTION="$1"
-TARGETS="${@:2}"
+UNITS="${@:2}"
 
 function get_unit_file(){
     
      PATHS=(
-         /etc/systemd/system/$1
-         /usr/lib/systemd/system/$1
-         /etc/systemd/system/$1.*
-         /usr/lib/systemd/system/$1.*
+         /etc/systemd/system/
+         /usr/lib/systemd/system/
      )
 
-     for i in ${PATHS[@]} ; do
-         if [ -f "$i" ] ; then
-             echo "$i"
+     for PATH in ${PATHS[@]} ; do
+         if [ -f "${PATH}${1}" ] ; then
+             echo "${PATH}${1}"
              break
          fi
      done
@@ -23,15 +21,25 @@ function get_unit_file(){
 
 function action_start(){
 
-    UNIT_FILE=`get_unit_file $1`
-
     echo $UNIT_FILE
+
 }
     
 
-for TARGET in ${TARGETS[@]}; do
-    case "$ACTION" in
-        start )     action_start $TARGET ;;
-        * ) >&2 echo "Unknown operation $ACTION." ;;
-    esac
+for UNIT in ${UNITS[@]}; do
+
+    [[ $UNIT =~ '.' ]] || UNIT="$UNIT.service"
+
+    UNIT_FILE=`get_unit_file $UNIT`
+
+    if [ -z $UNIT_FILE ] ; then
+        >&2 echo "Failed to $ACTION $UNIT: Unit $UNIT not found."
+        exit 1
+    else
+        case "$ACTION" in
+            start )     action_start $UNIT_FILE ;;
+            * ) >&2 echo "Unknown operation $ACTION." ;;
+        esac
+    fi
+
 done
