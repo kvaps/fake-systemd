@@ -21,7 +21,14 @@ function get_unit_file(){
 
 function action_start(){
 
-    echo $UNIT_FILE
+    Type=`grep -oP '(?<=Type).*' $UNIT_FILE | cut -d '=' -f2-`
+    ExecStart=`grep -oP '(?<=ExecStart).*' $UNIT_FILE | cut -d '=' -f2-`
+
+    if [[ "${Type,,}" == *"forking"* ]] ; then
+        eval "$ExecStart"
+    else
+        >&2 echo "Unknown service type $Type"
+    fi
 
 }
     
