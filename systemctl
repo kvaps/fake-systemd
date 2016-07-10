@@ -34,7 +34,6 @@ function get_unit_wants() {
          done
     
          # Print wants from unit-file
-#         grep -oP '(?<=Wants).*' $UNIT_FILE | cut -d '=' -f2-
          read_option Wants $UNIT_FILE
      )`
 }
@@ -51,8 +50,8 @@ function action_start(){
     done
 
     # Load options 
-    local Type=`grep -oP '(?<=Type).*' $UNIT_FILE | cut -d '=' -f2-`
-    local ExecStart=`grep -oP '(?<=ExecStart).*' $UNIT_FILE | cut -d '=' -f2-`
+    local Type=`read_option Type $UNIT_FILE`
+    local ExecStart=`read_option ExecStart $UNIT_FILE`
 
     # Start service 
     if [ -z $Type ] || [[ "${Type,,}" == *"simple"* ]] ; then
@@ -72,7 +71,6 @@ function action_enable(){
     local UNIT_FILE=$1
     local UNIT=`basename $UNIT_FILE`
 
-#    local WantedBy=`grep -oP '(?<=WantedBy).*' $UNIT_FILE | cut -d '=' -f2-`
     local WantedBy=`read_option WantedBy $UNIT_FILE`
 
     if [ -z $WantedBy ] ; then
@@ -95,7 +93,6 @@ function action_disable(){
     local UNIT_FILE=$1
     local UNIT=`basename $UNIT_FILE`
 
-#    local WantedBy=`grep -oP '(?<=WantedBy).*' $UNIT_FILE | cut -d '=' -f2-`
     local WantedBy=`read_option WantedBy $UNIT_FILE`
 
     if [ -z $WantedBy ] ; then
