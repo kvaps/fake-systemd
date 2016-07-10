@@ -58,6 +58,18 @@ function action_start(){
     fi
 
 }
+
+function action_enable(){
+
+    local UNIT_FILE=$1
+    local UNIT=`basename $UNIT_FILE`
+
+    if [ ! -f /usr/lib/systemd/system/$UNIT ] ; then
+        echo Created symlink from $UNIT_FILE to /usr/lib/systemd/system/$UNIT.
+        #ln -s /usr/lib/systemd/system/$UNIT $UNIT_FILE
+    fi
+    
+}
     
 function exec_action(){
 
@@ -74,6 +86,7 @@ function exec_action(){
     else
         case "$ACTION" in
             start )     action_start $UNIT_FILE ;;
+            enable )    action_enable $UNIT_FILE ;;
             * ) >&2 echo "Unknown operation $ACTION." ; exit 1 ;;
         esac
     fi
