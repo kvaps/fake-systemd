@@ -64,9 +64,19 @@ function action_enable(){
     local UNIT_FILE=$1
     local UNIT=`basename $UNIT_FILE`
 
-    if [ ! -f /usr/lib/systemd/system/$UNIT ] ; then
-        echo Created symlink from $UNIT_FILE to /usr/lib/systemd/system/$UNIT.
-        #ln -s /usr/lib/systemd/system/$UNIT $UNIT_FILE
+    local WantedBy=`grep -oP '(?<=WantedBy).*' $UNIT_FILE | cut -d '=' -f2-`
+
+    if [ -z $WantedBy ] ; then
+        >&2 echo "Unit $UNIT have no WantedBy option."
+        exit 1
+    fi
+    
+    local WANTEDBY_DIR="/usr/lib/systemd/$WantedBy.wants"
+
+    if [ ! -f "$WANTEDBY_DIR/$UNIT" ] ; then
+        mkdir -p $WANTEDBY_DIR
+        echo Created symlink from $UNIT_FILE to $WANTEDBY_DIR/$UNIT.
+        #ln -s $WANTEDBY_DIR/$UNIT $UNIT_FILE
     fi
     
 }
@@ -76,9 +86,19 @@ function action_disable(){
     local UNIT_FILE=$1
     local UNIT=`basename $UNIT_FILE`
 
-    if [ ! -f /usr/lib/systemd/system/$UNIT ] ; then
-        echo Removed /usr/lib/systemd/system/$UNIT.
-        #rm -f /usr/lib/systemd/system/$UNIT
+    local WantedBy=`grep -oP '(?<=WantedBy).*' $UNIT_FILE | cut -d '=' -f2-`
+
+    if [ -z $WantedBy ] ; then
+        >&2 echo "Unit $UNIT have no WantedBy option."
+        exit 1
+    fi
+
+    local WANTEDBY_DIR="/usr/lib/systemd/$WantedBy.wants"
+
+    if [ -f "$WANTEDBY_DIR/$UNIT" ] ; then
+        echo Removed $WANTEDBY_DIR/$UNIT.
+        #rm -f $WANTEDBY_DIR/$UNIT.
+        rmdir --ignore-fail-on-non-empty $WANTEDBY_DIR
     fi
     
 }
