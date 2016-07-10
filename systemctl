@@ -1,40 +1,69 @@
 #!/bin/bash
 
-ACTION="$1"
-UNITS="${@:2}"
-
 function get_unit_file(){
     
-     PATHS=(
-         /etc/systemd/system/
-         /usr/lib/systemd/system/
-     )
+     local UNIT=$1
 
-     for PATH in ${PATHS[@]} ; do
-         if [ -f "${PATH}${1}" ] ; then
-             echo "${PATH}${1}"
+     for DIR in ${UNIT_PATHS[@]} ; do
+         if [ -f "${DIR}${UNIT}" ] ; then
+             echo "${DIR}${UNIT}"
              break
          fi
      done
 
 }
 
+function get_unit_wants() {
+
+     local UNIT_FILE=$1
+     local UNIT=`basename $UNIT_FILE`
+
+     sort -u <<< `(
+         # Print wants from UNIT_PATHS
+         for DIR in ${UNIT_PATHS[@]} ; do
+             if [ -d "${DIR}${UNIT}.wants" ] ; then
+                 ls -1 "${DIR}${UNIT}.wants/" | tr '\n' ' '
+             fi
+         done
+    
+         # Print wants from unit-file
+         grep -oP '(?<=Wants).*' $UNIT_FILE | cut -d '=' -f2-
+     )`
+}
+
 function action_start(){
 
-    Type=`grep -oP '(?<=Type).*' $UNIT_FILE | cut -d '=' -f2-`
-    ExecStart=`grep -oP '(?<=ExecStart).*' $UNIT_FILE | cut -d '=' -f2-`
+    # Find depended services
+    local UNIT_FILE=$1
+    local UNIT_WANTS=(`get_unit_wants $1`)
 
-    if [[ "${Type,,}" == *"forking"* ]] ; then
-        eval "$ExecStart"
+    # Start depended services
+    for UNIT in ${UNIT_WANTS[@]}; do
+        exec_action start $UNIT
+    done
+
+    # Load options 
+    local Type=`grep -oP '(?<=Type).*' $UNIT_FILE | cut -d '=' -f2-`
+    local ExecStart=`grep -oP '(?<=ExecStart).*' $UNIT_FILE | cut -d '=' -f2-`
+
+    # Start service 
+    if [ -z $Type ] || [[ "${Type,,}" == *"simple"* ]] ; then
+        echo "nohup $ExecStart >>/dev/null &"
+        #eval "nohup $ExecStart >>/dev/null &"
+    elif [[ "${Type,,}" == *"forking"* ]] || [[ "${Type,,}" == *"oneshot"* ]] ; then
+        echo "$ExecStart"
+        #eval "$ExecStart"
     else
         >&2 echo "Unknown service type $Type"
     fi
 
 }
     
+function exec_action(){
 
-for UNIT in ${UNITS[@]}; do
-
+    local ACTION=$1
+    local UNIT=$2
+    
     [[ $UNIT =~ '.' ]] || UNIT="$UNIT.service"
 
     UNIT_FILE=`get_unit_file $UNIT`
@@ -45,8 +74,19 @@ for UNIT in ${UNITS[@]}; do
     else
         case "$ACTION" in
             start )     action_start $UNIT_FILE ;;
-            * ) >&2 echo "Unknown operation $ACTION." ;;
+            * ) >&2 echo "Unknown operation $ACTION." ; exit 1 ;;
         esac
     fi
+}
 
+ACTION="$1"
+UNITS="${@:2}"
+UNIT_PATHS=(
+    /etc/systemd/system/
+    /usr/lib/systemd/system/
+)
+
+
+for UNIT in ${UNITS[@]}; do
+    exec_action $ACTION $UNIT
 done
