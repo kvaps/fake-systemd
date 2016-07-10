@@ -13,6 +13,13 @@ function get_unit_file(){
 
 }
 
+function read_option(){
+     local OPTION="$1"
+     local FILE="$2"
+
+     grep -oP '(?<='$OPTION').*' "$FILE" | cut -d '=' -f2- | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+}
+
 function get_unit_wants() {
 
      local UNIT_FILE=$1
@@ -27,7 +34,8 @@ function get_unit_wants() {
          done
     
          # Print wants from unit-file
-         grep -oP '(?<=Wants).*' $UNIT_FILE | cut -d '=' -f2-
+#         grep -oP '(?<=Wants).*' $UNIT_FILE | cut -d '=' -f2-
+         read_option Wants $UNIT_FILE
      )`
 }
 
@@ -64,18 +72,19 @@ function action_enable(){
     local UNIT_FILE=$1
     local UNIT=`basename $UNIT_FILE`
 
-    local WantedBy=`grep -oP '(?<=WantedBy).*' $UNIT_FILE | cut -d '=' -f2-`
+#    local WantedBy=`grep -oP '(?<=WantedBy).*' $UNIT_FILE | cut -d '=' -f2-`
+    local WantedBy=`read_option WantedBy $UNIT_FILE`
 
     if [ -z $WantedBy ] ; then
         >&2 echo "Unit $UNIT have no WantedBy option."
         exit 1
     fi
     
-    local WANTEDBY_DIR="/usr/lib/systemd/$WantedBy.wants"
+    local WANTEDBY_DIR="/etc/systemd/system/$WantedBy.wants"
 
     if [ ! -f "$WANTEDBY_DIR/$UNIT" ] ; then
         mkdir -p $WANTEDBY_DIR
-        echo Created symlink from $UNIT_FILE to $WANTEDBY_DIR/$UNIT.
+        echo Created symlink from $WANTEDBY_DIR/$UNIT to $UNIT_FILE.
         #ln -s $WANTEDBY_DIR/$UNIT $UNIT_FILE
     fi
     
@@ -86,14 +95,15 @@ function action_disable(){
     local UNIT_FILE=$1
     local UNIT=`basename $UNIT_FILE`
 
-    local WantedBy=`grep -oP '(?<=WantedBy).*' $UNIT_FILE | cut -d '=' -f2-`
+#    local WantedBy=`grep -oP '(?<=WantedBy).*' $UNIT_FILE | cut -d '=' -f2-`
+    local WantedBy=`read_option WantedBy $UNIT_FILE`
 
     if [ -z $WantedBy ] ; then
         >&2 echo "Unit $UNIT have no WantedBy option."
         exit 1
     fi
 
-    local WANTEDBY_DIR="/usr/lib/systemd/$WantedBy.wants"
+    local WANTEDBY_DIR="/etc/systemd/system/$WantedBy.wants"
 
     if [ -f "$WANTEDBY_DIR/$UNIT" ] ; then
         echo Removed $WANTEDBY_DIR/$UNIT.
