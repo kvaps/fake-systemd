@@ -71,6 +71,18 @@ function action_enable(){
     
 }
     
+function action_disable(){
+
+    local UNIT_FILE=$1
+    local UNIT=`basename $UNIT_FILE`
+
+    if [ ! -f /usr/lib/systemd/system/$UNIT ] ; then
+        echo Removed /usr/lib/systemd/system/$UNIT.
+        #rm -f /usr/lib/systemd/system/$UNIT
+    fi
+    
+}
+
 function exec_action(){
 
     local ACTION=$1
@@ -87,6 +99,7 @@ function exec_action(){
         case "$ACTION" in
             start )     action_start $UNIT_FILE ;;
             enable )    action_enable $UNIT_FILE ;;
+            disable )   action_disable $UNIT_FILE ;;
             * ) >&2 echo "Unknown operation $ACTION." ; exit 1 ;;
         esac
     fi
