@@ -51,7 +51,10 @@ function action_start(){
 
     # Load options 
     local Type=`read_option Type $UNIT_FILE`
+    local EnvironmentFile=`read_option EnvironmentFile $UNIT_FILE`
     local ExecStart=`read_option ExecStart $UNIT_FILE`
+
+    [ -f $EnvironmentFile ] && source $EnvironmentFile
 
     # Start service 
     if [ -z $Type ] || [[ "${Type,,}" == *"simple"* ]] ; then
