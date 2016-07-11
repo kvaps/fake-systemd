@@ -80,18 +80,18 @@ function action_start(){
 
     #[ -z $User ] || COMMAND="su $User -c \"$COMMAND\""
 
-    for i in "${ExecStartPre[@]}"; do
+    while IFS=$'\n' read -a i; do
         echo $i
         #eval $i
-    done
+    done  <<< "${ExecStartPre[@]}"
 
     echo "$COMMAND"
     #eval "$COMMAND"
 
-    for i in "${ExecStartPost[@]}"; do
+    while IFS=$'\n' read -a i; do
         echo $i
         #eval $i
-    done
+    done  <<< "${ExecStartPost[@]}"
 }
 
 function action_stop(){
@@ -131,18 +131,18 @@ function action_stop(){
 
     #[ -z $User ] || COMMAND="su $User -c \"$COMMAND\""
 
-    for i in "${ExecStopPre[@]}"; do
+    while IFS=$'\n' read -a i; do
         echo $i
         #eval $i
-    done
+    done  <<< "${ExecStopPre[@]}"
 
     echo "$COMMAND"
     #eval "$COMMAND"
 
-    for i in "${ExecStopPost[@]}"; do
+    while IFS=$'\n' read -a i; do
         echo $i
         #eval $i
-    done
+    done  <<< "${ExecStopPost[@]}"
 }
 
 function action_restart(){
