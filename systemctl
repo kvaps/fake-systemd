@@ -81,16 +81,13 @@ function action_start(){
     #[ -z $User ] || COMMAND="su $User -c \"$COMMAND\""
 
     while IFS=$'\n' read -a i; do
-        echo $i
-        #eval $i
+        eval $i
     done  <<< "${ExecStartPre[@]}"
 
-    echo "$COMMAND"
-    #eval "$COMMAND"
+    eval "$COMMAND"
 
     while IFS=$'\n' read -a i; do
-        echo $i
-        #eval $i
+        eval $i
     done  <<< "${ExecStartPost[@]}"
 }
 
@@ -132,16 +129,13 @@ function action_stop(){
     #[ -z $User ] || COMMAND="su $User -c \"$COMMAND\""
 
     while IFS=$'\n' read -a i; do
-        echo $i
-        #eval $i
+        eval $i
     done  <<< "${ExecStopPre[@]}"
 
-    echo "$COMMAND"
-    #eval "$COMMAND"
+    eval "$COMMAND"
 
     while IFS=$'\n' read -a i; do
-        echo $i
-        #eval $i
+        eval $i
     done  <<< "${ExecStopPost[@]}"
 }
 
@@ -173,7 +167,7 @@ function action_enable(){
     if [ ! -f "$WANTEDBY_DIR/$UNIT_FULL" ] ; then
         mkdir -p $WANTEDBY_DIR
         echo Created symlink from $WANTEDBY_DIR/$UNIT_FULL to $UNIT_FILE.
-        #ln -s $WANTEDBY_DIR/$UNIT_FULL $UNIT_FILE
+        ln -s $WANTEDBY_DIR/$UNIT_FULL $UNIT_FILE
     fi
     
 }
@@ -196,7 +190,7 @@ function action_disable(){
 
     if [ -f "$WANTEDBY_DIR/$UNIT_FULL" ] ; then
         echo Removed $WANTEDBY_DIR/$UNIT_FULL.
-        #rm -f $WANTEDBY_DIR/$UNIT_FULL.
+        rm -f $WANTEDBY_DIR/$UNIT_FULL.
         rmdir --ignore-fail-on-non-empty $WANTEDBY_DIR
     fi
     
