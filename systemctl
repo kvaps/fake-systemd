@@ -15,9 +15,25 @@ function get_unit_file(){
 
 function read_option(){
      local OPTION="$1"
-     local FILE="$2"
+     local UNIT_FILE="$2"
+     local UNIT_INSTANCE="$3"
 
-     grep '^'$OPTION'[= ]' "$FILE" | cut -d '=' -f2- | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+     local UNIT=`basename $UNIT_FILE`
+     local UNIT_FULL=`echo $UNIT | sed "s/@/@$UNIT_INSTANCE/"`
+
+     VALUE="$(grep '^'$OPTION'[= ]' "$UNIT_FILE" | cut -d '=' -f2- | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+
+     VALUE="`
+         echo $VALUE |
+         sed -e "s/%[i]/$UNIT_INSTANCE/g" \
+             -e "s/%[I]/\"$UNIT_INSTANCE\"/g" \
+             -e "s/%[n]/$UNIT_FULL/g" \
+             -e "s/%[N]/\"$UNIT_FULL\"/g"
+     `"
+     # TODO: Add more options from:
+     # https://www.freedesktop.org/software/systemd/man/systemd.unit.html#Specifiers
+
+     echo $VALUE
 }
 
 function get_unit_wants() {
@@ -43,7 +59,7 @@ function action_start(){
     # Find depended services
     local UNIT_FILE=$1
     local UNIT_WANTS=(`get_unit_wants $1`)
-    local UNIT_INSTANSE=$2
+    local UNIT_INSTANCE=$2
 
     # Start depended services
     for UNIT in ${UNIT_WANTS[@]}; do
@@ -51,21 +67,12 @@ function action_start(){
     done
 
     # Load options 
-    if [ -z $UNIT_INSTANSE ]; then
-        local User=`read_option User $UNIT_FILE`
-        local Type=`read_option Type $UNIT_FILE`
-        local EnvironmentFile=`read_option EnvironmentFile $UNIT_FILE`
-        local ExecStartPre=(`read_option ExecStartPre $UNIT_FILE`)
-        local ExecStart=`read_option ExecStart $UNIT_FILE`
-        local ExecStartPost=(`read_option ExecStartPost $UNIT_FILE`)
-    else
-        local User=`read_option User $UNIT_FILE | sed "s/%[iI]/$UNIT_INSTANSE/g"`
-        local Type=`read_option Type $UNIT_FILE | sed "s/%[iI]/$UNIT_INSTANSE/g"`
-        local EnvironmentFile=`read_option EnvironmentFile $UNIT_FILE | sed "s/%[iI]/$UNIT_INSTANSE/g"`
-        local ExecStartPre=(`read_option ExecStartPre $UNIT_FILE | sed "s/%[iI]/$UNIT_INSTANSE/g"`)
-        local ExecStart=`read_option ExecStart $UNIT_FILE | sed "s/%[iI]/$UNIT_INSTANSE/g"`
-        local ExecStartPost=(`read_option ExecStartPost $UNIT_FILE | sed "s/%[iI]/$UNIT_INSTANSE/g"`)
-    fi
+    local User=`read_option User $UNIT_FILE $UNIT_INSTANCE`
+    local Type=`read_option Type $UNIT_FILE $UNIT_INSTANCE`
+    local EnvironmentFile=`read_option EnvironmentFile $UNIT_FILE $UNIT_INSTANCE`
+    local ExecStartPre=(`read_option ExecStartPre $UNIT_FILE $UNIT_INSTANCE`)
+    local ExecStart=`read_option ExecStart $UNIT_FILE $UNIT_INSTANCE`
+    local ExecStartPost=(`read_option ExecStartPost $UNIT_FILE $UNIT_INSTANCE`)
 
     [ -f "$EnvironmentFile" ] && source "$EnvironmentFile"
 
@@ -96,26 +103,16 @@ function action_stop(){
     # Find depended services
     local UNIT_FILE=$1
     local UNIT_WANTS=(`get_unit_wants $1`)
-    local UNIT_INSTANSE=$2
+    local UNIT_INSTANCE=$2
 
     # Load options 
-    if [ -z $UNIT_INSTANSE ]; then
-        local User=`read_option User $UNIT_FILE`
-        local Type=`read_option Type $UNIT_FILE`
-        local EnvironmentFile=`read_option EnvironmentFile $UNIT_FILE`
-        local ExecStopPre=(`read_option ExecStartPre $UNIT_FILE`)
-        local ExecStop=`read_option ExecStop $UNIT_FILE`
-        local ExecStopPost=(`read_option ExecStartPost $UNIT_FILE`)
-        local ExecStart=`read_option ExecStart $UNIT_FILE`
-    else
-        local User=`read_option User $UNIT_FILE | sed "s/%[iI]/$UNIT_INSTANSE/g"`
-        local Type=`read_option Type $UNIT_FILE | sed "s/%[iI]/$UNIT_INSTANSE/g"`
-        local EnvironmentFile=`read_option EnvironmentFile $UNIT_FILE | sed "s/%[iI]/$UNIT_INSTANSE/g"`
-        local ExecStopPre=(`read_option ExecStartPre $UNIT_FILE | sed "s/%[iI]/$UNIT_INSTANSE/g"`)
-        local ExecStop=`read_option ExecStop $UNIT_FILE | sed "s/%[iI]/$UNIT_INSTANSE/g"`
-        local ExecStopPost=(`read_option ExecStartPost $UNIT_FILE | sed "s/%[iI]/$UNIT_INSTANSE/g"`)
-        local ExecStart=`read_option ExecStart $UNIT_FILE | sed "s/%[iI]/$UNIT_INSTANSE/g"`
-    fi
+    local User=`read_option User $UNIT_FILE $UNIT_INSTANCE`
+    local Type=`read_option Type $UNIT_FILE $UNIT_INSTANCE`
+    local EnvironmentFile=`read_option EnvironmentFile $UNIT_FILE $UNIT_INSTANCE`
+    local ExecStopPre=(`read_option ExecStartPre $UNIT_FILE $UNIT_INSTANCE`)
+    local ExecStop=`read_option ExecStop $UNIT_FILE $UNIT_INSTANCE`
+    local ExecStopPost=(`read_option ExecStartPost $UNIT_FILE $UNIT_INSTANCE`)
+    local ExecStart=`read_option ExecStart $UNIT_FILE $UNIT_INSTANCE`
 
     [ -f "$EnvironmentFile" ] && source "$EnvironmentFile"
 
@@ -141,10 +138,10 @@ function action_stop(){
 
 function action_restart(){
     local UNIT_FILE=$1
-    local UNIT_INSTANSE=$2
+    local UNIT_INSTANCE=$2
 
-    action_start $UNIT_FILE $UNIT_INSTANSE
-    action_stop $UNIT_FILE $UNIT_INSTANSE
+    action_start $UNIT_FILE $UNIT_INSTANCE
+    action_stop $UNIT_FILE $UNIT_INSTANCE
 }
 
 
@@ -152,8 +149,8 @@ function action_enable(){
 
     local UNIT_FILE=$1
     local UNIT=`basename $UNIT_FILE`
-    local UNIT_INSTANSE=$2
-    local UNIT_FULL=`echo $UNIT | sed "s/@/@$UNIT_INSTANSE/"`
+    local UNIT_INSTANCE=$2
+    local UNIT_FULL=`echo $UNIT | sed "s/@/@$UNIT_INSTANCE/"`
 
     local WantedBy=`read_option WantedBy $UNIT_FILE`
 
@@ -176,8 +173,8 @@ function action_disable(){
 
     local UNIT_FILE=$1
     local UNIT=`basename $UNIT_FILE`
-    local UNIT_INSTANSE=$2
-    local UNIT_FULL=`echo $UNIT | sed "s/@/@$UNIT_INSTANSE/"`
+    local UNIT_INSTANCE=$2
+    local UNIT_FULL=`echo $UNIT | sed "s/@/@$UNIT_INSTANCE/"`
 
     local WantedBy=`read_option WantedBy $UNIT_FILE`
 
@@ -204,8 +201,8 @@ function exec_action(){
     [[ $UNIT =~ '.' ]] || UNIT="$UNIT.service"
 
     if [[ $UNIT =~ '@' ]] ; then
-        local UNIT_INSTANSE=`echo $UNIT | cut -d'@' -f2- | cut -d. -f1`
-        local UNIT=`echo $UNIT | sed "s/$UNIT_INSTANSE//"`
+        local UNIT_INSTANCE=`echo $UNIT | cut -d'@' -f2- | cut -d. -f1`
+        local UNIT=`echo $UNIT | sed "s/$UNIT_INSTANCE//"`
     fi
 
     UNIT_FILE=`get_unit_file $UNIT`
@@ -215,11 +212,11 @@ function exec_action(){
         exit 1
     else
         case "$ACTION" in
-            start )     action_start $UNIT_FILE $UNIT_INSTANSE ;;
-            stop )      action_stop $UNIT_FILE $UNIT_INSTANSE ;;
-            restart )   action_restart $UNIT_FILE $UNIT_INSTANSE ;;
-            enable )    action_enable $UNIT_FILE $UNIT_INSTANSE ;;
-            disable )   action_disable $UNIT_FILE $UNIT_INSTANSE ;;
+            start )     action_start $UNIT_FILE $UNIT_INSTANCE ;;
+            stop )      action_stop $UNIT_FILE $UNIT_INSTANCE ;;
+            restart )   action_restart $UNIT_FILE $UNIT_INSTANCE ;;
+            enable )    action_enable $UNIT_FILE $UNIT_INSTANCE ;;
+            disable )   action_disable $UNIT_FILE $UNIT_INSTANCE ;;
             * ) >&2 echo "Unknown operation $ACTION." ; exit 1 ;;
         esac
     fi
