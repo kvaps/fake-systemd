@@ -116,6 +116,15 @@ function action_stop(){
 
 }
 
+function action_restart(){
+    local UNIT_FILE=$1
+    local UNIT_INSTANSE=$2
+
+    action_start $UNIT_FILE $UNIT_INSTANSE ;;
+    action_stop $UNIT_FILE $UNIT_INSTANSE ;;
+}
+
+
 function action_enable(){
 
     local UNIT_FILE=$1
@@ -185,6 +194,7 @@ function exec_action(){
         case "$ACTION" in
             start )     action_start $UNIT_FILE $UNIT_INSTANSE ;;
             stop )      action_stop $UNIT_FILE $UNIT_INSTANSE ;;
+            restart )   action_restart $UNIT_FILE $UNIT_INSTANSE ;;
             enable )    action_enable $UNIT_FILE $UNIT_INSTANSE ;;
             disable )   action_disable $UNIT_FILE $UNIT_INSTANSE ;;
             * ) >&2 echo "Unknown operation $ACTION." ; exit 1 ;;
