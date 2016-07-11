@@ -76,6 +76,46 @@ function action_start(){
 
 }
 
+function action_stop(){
+
+    # Find depended services
+    local UNIT_FILE=$1
+    local UNIT_WANTS=(`get_unit_wants $1`)
+    local UNIT_INSTANSE=$2
+
+    # Load options 
+    if [ -z $UNIT_INSTANSE ]; then
+        local Type=`read_option Type $UNIT_FILE`
+        local EnvironmentFile=`read_option EnvironmentFile $UNIT_FILE`
+        local ExecStop=`read_option ExecStop $UNIT_FILE`
+        local ExecStart=`read_option ExecStart $UNIT_FILE`
+    else
+        local Type=`read_option Type $UNIT_FILE | sed "s/%[iI]/$UNIT_INSTANSE/g"`
+        local EnvironmentFile=`read_option EnvironmentFile $UNIT_FILE | sed "s/%[iI]/$UNIT_INSTANSE/g"`
+        local ExecStop=`read_option ExecStop $UNIT_FILE | sed "s/%[iI]/$UNIT_INSTANSE/g"`
+        local ExecStart=`read_option ExecStart $UNIT_FILE | sed "s/%[iI]/$UNIT_INSTANSE/g"`
+    fi
+
+    [ -f "$EnvironmentFile" ] && source "$EnvironmentFile"
+
+    # Stop service 
+    if [ -z $ExecStop ] ; then
+        if [ -z $Type ] || [[ "${Type,,}" == *"simple"* ]] ; then
+            echo kill \$\(pgrep -f \"nohup $ExecStart >>/dev/null &\"\)
+            #eval kill \$\(pgrep -f \"nohup $ExecStart >>/dev/null &\"\)
+        elif [[ "${Type,,}" == *"forking"* ]] || [[ "${Type,,}" == *"oneshot"* ]] ; then
+            echo kill \$\(pgrep -f \"$ExecStart\"\)
+            #eval kill \$\(pgrep -f \"$ExecStart\"\)
+        else
+            >&2 echo "Unknown service type $Type"
+        fi
+    else
+        echo "$ExecStop"
+        #eval "$ExecStop"
+    fi
+
+}
+
 function action_enable(){
 
     local UNIT_FILE=$1
@@ -144,6 +184,7 @@ function exec_action(){
     else
         case "$ACTION" in
             start )     action_start $UNIT_FILE $UNIT_INSTANSE ;;
+            stop )      action_stop $UNIT_FILE $UNIT_INSTANSE ;;
             enable )    action_enable $UNIT_FILE $UNIT_INSTANSE ;;
             disable )   action_disable $UNIT_FILE $UNIT_INSTANSE ;;
             * ) >&2 echo "Unknown operation $ACTION." ; exit 1 ;;
