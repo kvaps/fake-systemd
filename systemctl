@@ -43,6 +43,7 @@ function action_start(){
     # Find depended services
     local UNIT_FILE=$1
     local UNIT_WANTS=(`get_unit_wants $1`)
+    local UNIT_INSTANSE=$2
 
     # Start depended services
     for UNIT in ${UNIT_WANTS[@]}; do
@@ -50,11 +51,17 @@ function action_start(){
     done
 
     # Load options 
-    local Type=`read_option Type $UNIT_FILE`
-    local EnvironmentFile=`read_option EnvironmentFile $UNIT_FILE`
-    local ExecStart=`read_option ExecStart $UNIT_FILE`
+    if [ -z $UNIT_INSTANSE ]; then
+        local Type=`read_option Type $UNIT_FILE`
+        local EnvironmentFile=`read_option EnvironmentFile $UNIT_FILE`
+        local ExecStart=`read_option ExecStart $UNIT_FILE`
+    else
+        local Type=`read_option Type $UNIT_FILE | sed "s/%[iI]/$UNIT_INSTANSE/g"`
+        local EnvironmentFile=`read_option EnvironmentFile $UNIT_FILE | sed "s/%[iI]/$UNIT_INSTANSE/g"`
+        local ExecStart=`read_option ExecStart $UNIT_FILE | sed "s/%[iI]/$UNIT_INSTANSE/g"`
+    fi
 
-    [ -f $EnvironmentFile ] && source $EnvironmentFile
+    [ -f "$EnvironmentFile" ] && source "$EnvironmentFile"
 
     # Start service 
     if [ -z $Type ] || [[ "${Type,,}" == *"simple"* ]] ; then
@@ -73,6 +80,8 @@ function action_enable(){
 
     local UNIT_FILE=$1
     local UNIT=`basename $UNIT_FILE`
+    local UNIT_INSTANSE=$2
+    local UNIT_FULL=`echo $UNIT | sed "s/@/@$UNIT_INSTANSE/"`
 
     local WantedBy=`read_option WantedBy $UNIT_FILE`
 
@@ -83,10 +92,10 @@ function action_enable(){
     
     local WANTEDBY_DIR="/etc/systemd/system/$WantedBy.wants"
 
-    if [ ! -f "$WANTEDBY_DIR/$UNIT" ] ; then
+    if [ ! -f "$WANTEDBY_DIR/$UNIT_FULL" ] ; then
         mkdir -p $WANTEDBY_DIR
-        echo Created symlink from $WANTEDBY_DIR/$UNIT to $UNIT_FILE.
-        #ln -s $WANTEDBY_DIR/$UNIT $UNIT_FILE
+        echo Created symlink from $WANTEDBY_DIR/$UNIT_FULL to $UNIT_FILE.
+        #ln -s $WANTEDBY_DIR/$UNIT_FULL $UNIT_FILE
     fi
     
 }
@@ -95,6 +104,8 @@ function action_disable(){
 
     local UNIT_FILE=$1
     local UNIT=`basename $UNIT_FILE`
+    local UNIT_INSTANSE=$2
+    local UNIT_FULL=`echo $UNIT | sed "s/@/@$UNIT_INSTANSE/"`
 
     local WantedBy=`read_option WantedBy $UNIT_FILE`
 
@@ -105,9 +116,9 @@ function action_disable(){
 
     local WANTEDBY_DIR="/etc/systemd/system/$WantedBy.wants"
 
-    if [ -f "$WANTEDBY_DIR/$UNIT" ] ; then
-        echo Removed $WANTEDBY_DIR/$UNIT.
-        #rm -f $WANTEDBY_DIR/$UNIT.
+    if [ -f "$WANTEDBY_DIR/$UNIT_FULL" ] ; then
+        echo Removed $WANTEDBY_DIR/$UNIT_FULL.
+        #rm -f $WANTEDBY_DIR/$UNIT_FULL.
         rmdir --ignore-fail-on-non-empty $WANTEDBY_DIR
     fi
     
@@ -120,6 +131,11 @@ function exec_action(){
     
     [[ $UNIT =~ '.' ]] || UNIT="$UNIT.service"
 
+    if [[ $UNIT =~ '@' ]] ; then
+        local UNIT_INSTANSE=`echo $UNIT | cut -d'@' -f2- | cut -d. -f1`
+        local UNIT=`echo $UNIT | sed "s/$UNIT_INSTANSE//"`
+    fi
+
     UNIT_FILE=`get_unit_file $UNIT`
 
     if [ -z $UNIT_FILE ] ; then
@@ -127,9 +143,9 @@ function exec_action(){
         exit 1
     else
         case "$ACTION" in
-            start )     action_start $UNIT_FILE ;;
-            enable )    action_enable $UNIT_FILE ;;
-            disable )   action_disable $UNIT_FILE ;;
+            start )     action_start $UNIT_FILE $UNIT_INSTANSE ;;
+            enable )    action_enable $UNIT_FILE $UNIT_INSTANSE ;;
+            disable )   action_disable $UNIT_FILE $UNIT_INSTANSE ;;
             * ) >&2 echo "Unknown operation $ACTION." ; exit 1 ;;
         esac
     fi
