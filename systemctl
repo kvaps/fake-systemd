@@ -124,7 +124,7 @@ function action_stop(){
 
     # Stop service 
     if [ -z $ExecStop ] ; then
-        COMMAND="kill \$\(pgrep -f \"$ExecStart\"\)"
+        COMMAND="pkill -TERM -P \$(pgrep -f \"$ExecStart\")"
     else
         COMMAND="$ExecStop"
     fi
