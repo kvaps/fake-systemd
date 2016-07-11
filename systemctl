@@ -52,10 +52,12 @@ function action_start(){
 
     # Load options 
     if [ -z $UNIT_INSTANSE ]; then
+        local User=`read_option User $UNIT_FILE`
         local Type=`read_option Type $UNIT_FILE`
         local EnvironmentFile=`read_option EnvironmentFile $UNIT_FILE`
         local ExecStart=`read_option ExecStart $UNIT_FILE`
     else
+        local User=`read_option User $UNIT_FILE | sed "s/%[iI]/$UNIT_INSTANSE/g"`
         local Type=`read_option Type $UNIT_FILE | sed "s/%[iI]/$UNIT_INSTANSE/g"`
         local EnvironmentFile=`read_option EnvironmentFile $UNIT_FILE | sed "s/%[iI]/$UNIT_INSTANSE/g"`
         local ExecStart=`read_option ExecStart $UNIT_FILE | sed "s/%[iI]/$UNIT_INSTANSE/g"`
@@ -65,14 +67,17 @@ function action_start(){
 
     # Start service 
     if [ -z $Type ] || [[ "${Type,,}" == *"simple"* ]] ; then
-        echo "nohup $ExecStart >>/dev/null &"
-        #eval "nohup $ExecStart >>/dev/null &"
+        COMMAND="nohup $ExecStart >>/dev/null &"
     elif [[ "${Type,,}" == *"forking"* ]] || [[ "${Type,,}" == *"oneshot"* ]] ; then
-        echo "$ExecStart"
-        #eval "$ExecStart"
+        COMMAND="$ExecStart"
     else
         >&2 echo "Unknown service type $Type"
     fi
+
+    [ -z $User ] || COMMAND="su $User -c \"$COMMAND\""
+
+    echo "$COMMAND"
+    #eval "$COMMAND"
 
 }
 
@@ -85,11 +90,13 @@ function action_stop(){
 
     # Load options 
     if [ -z $UNIT_INSTANSE ]; then
+        local User=`read_option User $UNIT_FILE`
         local Type=`read_option Type $UNIT_FILE`
         local EnvironmentFile=`read_option EnvironmentFile $UNIT_FILE`
         local ExecStop=`read_option ExecStop $UNIT_FILE`
         local ExecStart=`read_option ExecStart $UNIT_FILE`
     else
+        local User=`read_option User $UNIT_FILE | sed "s/%[iI]/$UNIT_INSTANSE/g"`
         local Type=`read_option Type $UNIT_FILE | sed "s/%[iI]/$UNIT_INSTANSE/g"`
         local EnvironmentFile=`read_option EnvironmentFile $UNIT_FILE | sed "s/%[iI]/$UNIT_INSTANSE/g"`
         local ExecStop=`read_option ExecStop $UNIT_FILE | sed "s/%[iI]/$UNIT_INSTANSE/g"`
@@ -101,18 +108,20 @@ function action_stop(){
     # Stop service 
     if [ -z $ExecStop ] ; then
         if [ -z $Type ] || [[ "${Type,,}" == *"simple"* ]] ; then
-            echo kill \$\(pgrep -f \"nohup $ExecStart >>/dev/null &\"\)
-            #eval kill \$\(pgrep -f \"nohup $ExecStart >>/dev/null &\"\)
+            COMMAND="kill \$\(pgrep -f \"nohup $ExecStart >>/dev/null &\"\)"
         elif [[ "${Type,,}" == *"forking"* ]] || [[ "${Type,,}" == *"oneshot"* ]] ; then
-            echo kill \$\(pgrep -f \"$ExecStart\"\)
-            #eval kill \$\(pgrep -f \"$ExecStart\"\)
+            COMMAND="kill \$\(pgrep -f \"$ExecStart\"\)"
         else
             >&2 echo "Unknown service type $Type"
         fi
     else
-        echo "$ExecStop"
-        #eval "$ExecStop"
+        COMMAND="$ExecStop"
     fi
+
+    [ -z $User ] || COMMAND="su $User -c \"$COMMAND\""
+
+    echo "$COMMAND"
+    #eval "$COMMAND"
 
 }
 
