@@ -9,6 +9,10 @@ function get_unit_file(){
             echo "${dir}${UNIT}"
             break
         fi
+        if [ -f "${dir}${UNIT}.service" ] ; then
+            echo "${dir}${UNIT}.service"
+            break
+        fi
     done
 }
 
