@@ -106,7 +106,7 @@ function action_start(){
         cmd=("/usr/bin/start-stop-daemon --background --start --pidfile $PIDFile $makepid")
 
         [ -f "$WorkingDirectory" ] && cmd+=("--chdir $WorkingDirectory")
-        [ -f "$User" ] && cmd+=("--chuid $User")
+        [ -n "$User" ] && cmd+=("--chuid $User")
 
         cmd+=(--exec "${ExecStart[0]}" -- "${ExecStart[@]:1}")
 
