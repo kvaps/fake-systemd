@@ -18,6 +18,7 @@ function get_unit_file(){
 
 function read_option(){
     local option="$1"
+
     value="$(grep '^'$option'[= ]' "$UNIT_FILE" | cut -d '=' -f2- | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
     value="`
         echo $value |
@@ -29,7 +30,19 @@ function read_option(){
     # TODO: Add more options from:
     # https://www.freedesktop.org/software/systemd/man/systemd.unit.html#Specifiers
 
-    echo $value
+    if [ -n "$value" ]; then
+        echo $value
+        return
+    else
+        for include in $(grep '^.include' "$UNIT_FILE" | sed 's/^\.include[[:space:]]*//'); do
+            recurse_value=$(UNIT_FILE=$include read_option $option)
+            if [ -n "$recurse_value" ]; then
+                echo $recurse_value
+                return
+            fi
+        done
+    fi
+
 }
 
 function read_multioption(){
