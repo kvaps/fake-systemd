@@ -89,6 +89,12 @@ function action_start(){
     local ExecStart=($(read_option ExecStart))
     local ExecStartPre=$(read_multioption ExecStartPre)
     local ExecStartPost=$(read_multioption ExecStartPost)
+    local Environment=$(read_multioption Environment)
+
+    # export Environnement
+    for envvar in $Environment; do
+        eval $(echo "export $envvar")
+    done
 
     # From doc: oneshot are the only service units that may have more than one
     # ExecStart= specified. They will be executed in order until either they
@@ -152,9 +158,16 @@ function action_stop(){
     local ExecStop=$(read_option ExecStop)
     local ExecStopPre=$(read_multioption ExecStopPre)
     local ExecStopPost=$(read_multioption ExecStopPost)
+    local Environment=$(read_multioption Environment)
 
     [ -z "$PIDFile" ] && PIDFile="/run/$UNIT_NAME.pid"
     [ -f "$EnvironmentFile" ] && source "$EnvironmentFile"
+
+    # export Environnement
+    for envvar in $Environment; do
+        eval $(echo "export $envvar")
+    done
+
 
     # Stop service 
     if [ -z "$ExecStop" ] ; then
