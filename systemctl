@@ -122,8 +122,17 @@ function action_start(){
             $(eval echo "$i")
         done  <<< "${ExecStartPost[@]}"
     elif [ -z $Type ] || [[ "${Type,,}" == *"simple"* ]] || [[ "${Type,,}" == *"notify"* ]] || [[ "${Type,,}" == *"forking"* ]] ; then
+
         makepid=""
-        [ -z "$PIDFile" ] && PIDFile="/run/$UNIT_NAME.pid" && makepid="--make-pidfile"
+        if [ -z "$PIDFile" ]; then
+            PIDdir="/run/${UNIT_NAME}"
+
+            mkdir $PIDdir
+            [ -n "$User" ] && chown $User $PIDdir
+            PIDFile="${PIDdir}/${UNIT_NAME}.pid" 
+            makepid="--make-pidfile"
+        fi
+
         [ -f "$EnvironmentFile" ] && source "$EnvironmentFile"
 
         cmd=("/usr/bin/start-stop-daemon --background --start --pidfile $PIDFile $makepid")
@@ -172,9 +181,12 @@ function action_stop(){
     # Stop service 
     if [ -z "$ExecStop" ] ; then
         cmd="/usr/bin/start-stop-daemon --stop --pidfile $PIDFile"
+        [ -n "$User" ] && cmd+=("--chuid $User")
     else
         cmd="$ExecStop"
+        [ -n "$User" ] && cmd="runuser -m -u $User -- $cmd"
     fi
+
 
     while IFS=$'\n' read -a i; do
         # ignore errors
@@ -267,7 +279,7 @@ function _get_pid(){
     local PIDFile=$(read_option PIDFile)
 
     # set default pifile
-    [ -z "$PIDFile" ] && PIDFile="/run/$UNIT_NAME.pid"
+    [ -z "$PIDFile" ] && PIDFile="/run/${UNIT_NAME}/${UNIT_NAME}.pid"
 
     # now check if the pidfile exists
     if [ ! -f "$PIDFile" ]; then
