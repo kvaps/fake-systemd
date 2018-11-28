@@ -1,8 +1,10 @@
 # Fake Systemd
 
-From https://github.com/kvaps/fake-systemd and using Debian like start-stop-deamon from https://github.com/daleobrien/start-stop-daemon written by Marek Michalkiewicz <marekm@i17linuxb.ists.pwr.wroc.pl>.
+Simple bash script using start-stop-daemon, instead of using original systemctl + dbus + priviliges + seccomp + x packages + conjunction of mercury and venus.
 
-Instead of using original systemctl + dbus + priviliges + seccomp + x packages + conjunction of mercury and venus, a simple bash script using start-stop-daemon.
+## Status 
+
+This project is effectively unmaintained. I will do my best to shepherd pull requests, but cannot guarantee a prompt response and do not have bandwidth to address issues or add new features. Please let me know via an issue if you'd be interested in taking ownership of fake-systemd.
 
 ## Usage
 
