@@ -147,7 +147,7 @@ function action_start(){
             $(eval echo "$i") || echo
         done  <<< "${ExecStartPre[@]}"
 
-        $(eval echo "${cmd[@]}")
+        eval "$(echo "${cmd[@]}")"
 
         while IFS=$'\n' read -a i; do
             # ignore errors
@@ -193,7 +193,7 @@ function action_stop(){
         $(eval echo "$i") || echo
     done  <<< "${ExecStopPre[@]}"
 
-    $(eval echo "${cmd[@]}")
+    eval "$(echo "${cmd[@]}")"
 
     while IFS=$'\n' read -a i; do
         # ignore errors
