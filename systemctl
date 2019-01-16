@@ -127,7 +127,7 @@ function action_start(){
         if [ -z "$PIDFile" ]; then
             PIDdir="/run/${UNIT_NAME}"
 
-            mkdir $PIDdir
+            mkdir -p $PIDdir
             [ -n "$User" ] && chown $User $PIDdir
             PIDFile="${PIDdir}/${UNIT_NAME}.pid" 
             makepid="--make-pidfile"
@@ -169,7 +169,7 @@ function action_stop(){
     local ExecStopPost=$(read_multioption ExecStopPost)
     local Environment=$(read_multioption Environment)
 
-    [ -z "$PIDFile" ] && PIDFile="/run/$UNIT_NAME.pid"
+    [ -z "$PIDFile" ] && PIDFile="/run/${UNIT_NAME}/${UNIT_NAME}.pid"
     [ -f "$EnvironmentFile" ] && source "$EnvironmentFile"
 
     # export Environnement
