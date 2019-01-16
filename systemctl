@@ -127,7 +127,7 @@ function action_start(){
         if [ -z "$PIDFile" ]; then
             PIDdir="/run/${UNIT_NAME}"
 
-            mkdir $PIDdir
+            mkdir -p $PIDdir
             [ -n "$User" ] && chown $User $PIDdir
             PIDFile="${PIDdir}/${UNIT_NAME}.pid" 
             makepid="--make-pidfile"
