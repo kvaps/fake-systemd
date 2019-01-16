@@ -169,7 +169,7 @@ function action_stop(){
     local ExecStopPost=$(read_multioption ExecStopPost)
     local Environment=$(read_multioption Environment)
 
-    [ -z "$PIDFile" ] && PIDFile="/run/$UNIT_NAME.pid"
+    [ -z "$PIDFile" ] && PIDFile="/run/${UNIT_NAME}/${UNIT_NAME}.pid"
     [ -f "$EnvironmentFile" ] && source "$EnvironmentFile"
 
     # export Environnement
