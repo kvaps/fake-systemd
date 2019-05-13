@@ -202,9 +202,9 @@ function action_stop(){
 }
 
 function action_restart(){
-    action_start
-    sleep 1
     action_stop
+    sleep 1
+    action_start
 }
 
 function action_enable(){
