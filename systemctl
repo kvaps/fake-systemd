@@ -320,6 +320,26 @@ function action_status(){
     echo
 }
 
+function action_show(){
+    local Description=$(read_option Description)
+    local Documentation=$(read_option Documentation)
+    pid=$(_get_pid)
+    isenabled=$(action_isenabled)
+    isactive=$(action_isactive)
+
+    if [ $isactive == "unknown" ]; then
+	  isactive="inactive"
+    fi
+
+    # LoadState can be: active, inactive, activating, deactivating, failed, not-found, dead, masked
+    echo "LoadState=$isactive"
+	# ActiveState can be: active, reloading, inactive, failed, activating, deactivating
+	echo "ActiveState=$isactive"
+    echo "UnitFilePreset=$isenabled"
+    echo "Description=$Description"
+    echo "Documentation=$Documentation"
+}
+
 function exec_action(){
     local ACTION=$1
     local UNIT=$2
@@ -346,6 +366,7 @@ function exec_action(){
         exit 1
     else
         case "$ACTION" in
+            show )      action_show ;;
             status )    action_status ;;
             start )     action_start ;;
             stop )      action_stop ;;
