@@ -74,6 +74,24 @@ function get_unit_wants() {
     )`
 }
 
+function rotate_logs() {
+    local log_file="$1"
+    local max_size=$((10 * 1024 * 1024))
+    local keep_files=5
+
+    if [ -f "$log_file" ]; then
+        local file_size=$(stat -c%s "$log_file" 2>/dev/null || echo 0)
+        if [ "$file_size" -gt "$max_size" ]; then
+            for ((i=keep_files-1; i>=1; i--)); do
+                local next=$((i+1))
+                [ -f "${log_file}.${i}.gz" ] && mv "${log_file}.${i}.gz" "${log_file}.${next}.gz"
+            done
+            gzip -c "$log_file" > "${log_file}.1.gz"
+            > "$log_file"
+        fi
+    fi
+}
+
 function action_start(){
     # Start depended services
     for unit in ${UNIT_WANTS[@]}; do
@@ -96,6 +114,12 @@ function action_start(){
         eval $(echo "export $envvar")
     done
 
+    local LOG_DIR="/var/log/fake-journal"
+    mkdir -p "$LOG_DIR"
+    [ -n "$User" ] && chown "$User" "$LOG_DIR" 2>/dev/null
+    local LOG_FILE="$LOG_DIR/${UNIT_NAME}.log"
+    rotate_logs "$LOG_FILE"
+
     # From doc: oneshot are the only service units that may have more than one
     # ExecStart= specified. They will be executed in order until either they
     # are all successful or one of them fails.
@@ -110,16 +134,16 @@ function action_start(){
 
         while IFS=$'\n' read -a i; do
             # ignore errors
-            $(eval echo "$i") || echo
+            $(eval echo "$i") >> "$LOG_FILE" 2>&1 || echo
         done  <<< "${ExecStartPre[@]}"
 
         while IFS=$'\n' read -a i; do
             # ignore errors
-            $(eval echo "$i") || echo
+            $(eval echo "$i") >> "$LOG_FILE" 2>&1 || echo
         done  <<< "${ExecStart[@]}"
 
         while IFS=$'\n' read -a i; do
-            $(eval echo "$i")
+            $(eval echo "$i") >> "$LOG_FILE" 2>&1
         done  <<< "${ExecStartPost[@]}"
     elif [ -z $Type ] || [[ "${Type,,}" == *"simple"* ]] || [[ "${Type,,}" == *"notify"* ]] || [[ "${Type,,}" == *"forking"* ]] ; then
 
@@ -140,18 +164,18 @@ function action_start(){
         [ -f "$WorkingDirectory" ] && cmd+=("--chdir $WorkingDirectory")
         [ -n "$User" ] && cmd+=("--chuid $User")
 
-        cmd+=(--exec "${ExecStart[0]}" -- "${ExecStart[@]:1}")
+        cmd+=(--startas /bin/bash -- -c "exec \"\$@\" >> \"$LOG_FILE\" 2>&1" bash "${ExecStart[0]}" "${ExecStart[@]:1}")
 
         while IFS=$'\n' read -a i; do
             # ignore errors
-            $(eval echo "$i") || echo
+            $(eval echo "$i") >> "$LOG_FILE" 2>&1 || echo
         done  <<< "${ExecStartPre[@]}"
 
         eval "$(echo "${cmd[@]}")"
 
         while IFS=$'\n' read -a i; do
             # ignore errors
-            $(eval echo "$i") || echo
+            $(eval echo "$i") >> "$LOG_FILE" 2>&1 || echo
         done  <<< "${ExecStartPost[@]}"
     else
         >&2 echo "Unknown service type $Type"
@@ -177,6 +201,10 @@ function action_stop(){
         eval $(echo "export $envvar")
     done
 
+    local LOG_DIR="/var/log/fake-journal"
+    mkdir -p "$LOG_DIR"
+    [ -n "$User" ] && chown "$User" "$LOG_DIR" 2>/dev/null
+    local LOG_FILE="$LOG_DIR/${UNIT_NAME}.log"
 
     # Stop service 
     if [ -z "$ExecStop" ] ; then
@@ -190,14 +218,14 @@ function action_stop(){
 
     while IFS=$'\n' read -a i; do
         # ignore errors
-        $(eval echo "$i") || echo
+        $(eval echo "$i") >> "$LOG_FILE" 2>&1 || echo
     done  <<< "${ExecStopPre[@]}"
 
-    eval "$(echo "${cmd[@]}")"
+    eval "$(echo "${cmd[@]}")" >> "$LOG_FILE" 2>&1
 
     while IFS=$'\n' read -a i; do
         # ignore errors
-        $(eval echo "$i") || echo
+        $(eval echo "$i") >> "$LOG_FILE" 2>&1 || echo
     done  <<< "${ExecStopPost[@]}"
 }
 
