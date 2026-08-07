@@ -348,6 +348,76 @@ function action_status(){
     echo
 }
 
+function action_list_unit_files(){
+    local count=0
+
+    printf "%-40s %-10s\n" "UNIT FILE" "STATE"
+    echo ""
+
+    for dir in ${UNIT_PATHS[@]}; do
+        [ -d "$dir" ] || continue
+        for unit_file in "$dir"*.service; do
+            [ -f "$unit_file" ] || continue
+            local unit_name=$(basename "$unit_file")
+            local wanted_by=$(grep '^WantedBy[= ]' "$unit_file" | head -1 | cut -d '=' -f2- | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+
+            local state="static"
+            if [ -n "$wanted_by" ]; then
+                state="disabled"
+                local wanted_dir="/etc/systemd/system/$wanted_by.wants"
+                if [ -f "$wanted_dir/$unit_name" ] || [ -L "$wanted_dir/$unit_name" ]; then
+                    state="enabled"
+                fi
+            fi
+
+            printf "%-40s %-10s\n" "$unit_name" "$state"
+            count=$((count + 1))
+        done
+    done
+
+    echo ""
+    echo "$count unit files listed."
+}
+
+function action_list_units(){
+    local count=0
+
+    printf "%-40s %-7s %-7s %-8s %s\n" "UNIT" "LOAD" "ACTIVE" "SUB" "DESCRIPTION"
+    echo ""
+
+    for dir in ${UNIT_PATHS[@]}; do
+        [ -d "$dir" ] || continue
+        for unit_file in "$dir"*.service; do
+            [ -f "$unit_file" ] || continue
+            local unit_name=$(basename "$unit_file")
+            local unit_basename=$(echo "$unit_name" | cut -d '.' -f1)
+
+            local description=$(grep '^Description[= ]' "$unit_file" | head -1 | cut -d '=' -f2- | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+            [ -z "$description" ] && description="-"
+
+            local pid_file=$(grep '^PIDFile[= ]' "$unit_file" | head -1 | cut -d '=' -f2- | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+            [ -z "$pid_file" ] && pid_file="/run/${unit_basename}/${unit_basename}.pid"
+
+            local active_state="inactive"
+            local sub_state="dead"
+
+            if [ -f "$pid_file" ]; then
+                local pid=$(cat "$pid_file" 2>/dev/null)
+                if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+                    active_state="active"
+                    sub_state="running"
+                fi
+            fi
+
+            printf "%-40s %-7s %-7s %-8s %s\n" "$unit_name" "loaded" "$active_state" "$sub_state" "$description"
+            count=$((count + 1))
+        done
+    done
+
+    echo ""
+    echo "$count units listed."
+}
+
 function exec_action(){
     local ACTION=$1
     local UNIT=$2
@@ -374,14 +444,16 @@ function exec_action(){
         exit 1
     else
         case "$ACTION" in
-            status )    action_status ;;
-            start )     action_start ;;
-            stop )      action_stop ;;
-            restart )   action_restart ;;
-            enable )    action_enable ;;
-            disable )   action_disable ;;
-            is-active ) action_isactive ;;
-            is-enabled ) action_isenabled ;;
+            status )          action_status ;;
+            start )           action_start ;;
+            stop )            action_stop ;;
+            restart )         action_restart ;;
+            enable )          action_enable ;;
+            disable )         action_disable ;;
+            is-active )       action_isactive ;;
+            is-enabled )      action_isenabled ;;
+            list-unit-files ) action_list_unit_files ;;
+            list-units )      action_list_units ;;
             help ) >&2 echo "This command expects one or more unit names. Did you mean --help?" ; exit 1 ;;
             -h ) echo $USAGE ; exit 0 ;;
             --help ) echo $USAGE ; exit 0 ;;
@@ -407,6 +479,8 @@ Unit Commands:
   restart NAME...                 Start or restart one or more units
   is-active PATTERN...            Check whether units are active
   status [PATTERN...|PID...]      Show runtime status of one or more units
+  list-units                      List units currently in memory
+  list-unit-files                 List unit files installed on the system
 
 Unit File Commands:
   enable NAME...                  Enable one or more unit files
@@ -432,9 +506,13 @@ Unit File Commands:
     local ACTION="$1"
     local UNITS="${@:2}"
 
-    for UNIT in ${UNITS[@]}; do
-        exec_action $ACTION $UNIT
-    done
+    if [ -z "$UNITS" ]; then
+        exec_action $ACTION
+    else
+        for UNIT in ${UNITS[@]}; do
+            exec_action $ACTION $UNIT
+        done
+    fi
 }
 
 main $@
