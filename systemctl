@@ -132,8 +132,11 @@ function action_start(){
             PIDFile="${PIDdir}/${UNIT_NAME}.pid" 
             makepid="--make-pidfile"
         fi
-
-        [ -f "$EnvironmentFile" ] && source "$EnvironmentFile"
+	if [ -f "$EnvironmentFile" ]; then
+		set -a
+		source "$EnvironmentFile"
+		set +a
+	fi
 
         cmd=("/usr/bin/start-stop-daemon --background --start --pidfile $PIDFile $makepid")
 
@@ -170,8 +173,12 @@ function action_stop(){
     local Environment=$(read_multioption Environment)
 
     [ -z "$PIDFile" ] && PIDFile="/run/${UNIT_NAME}/${UNIT_NAME}.pid"
-    [ -f "$EnvironmentFile" ] && source "$EnvironmentFile"
 
+    if [ -f "$EnvironmentFile" ]; then
+	    set -a
+	    source "$EnvironmentFile"
+	    set +a
+    fi
     # export Environnement
     for envvar in $Environment; do
         eval $(echo "export $envvar")
